@@ -1,0 +1,45 @@
+name: Build kmod-rtl8192eu for OpenWrt 21.02.7
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout SDK
+        run: |
+          wget https://downloads.openwrt.org/releases/21.02.7/targets/armvirt/64/openwrt-sdk-21.02.7-armvirt-64_gcc-8.4.0_musl.Linux-x86_64.tar.xz
+          tar -xf openwrt-sdk-*.tar.xz
+          mv openwrt-sdk-* sdk
+
+      - name: Install deps
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git unzip wget libncurses5-dev zlib1g-dev gawk \
+            flex gettext libssl-dev python3 python3-distutils rsync
+
+      - name: Add rtl8192eu package
+        run: |
+          cd sdk/package/kernel
+          git clone https://github.com/ulli-kroll/rtl8192eu.git
+          cd ../../
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Configure
+        run: |
+          cd sdk
+          make defconfig
+
+      - name: Build
+        run: |
+          cd sdk
+          make package/kernel/rtl8192eu/compile V=s -j$(nproc)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: kmod-rtl8192eu-ipk
+          path: sdk/bin/packages/**/base/kmod-rtl8192eu*.ipk
