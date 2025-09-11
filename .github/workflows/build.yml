@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -14,7 +14,16 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential git wget unzip libncurses5-dev gawk gettext libssl-dev xsltproc rsync
+          sudo apt install -y build-essential git wget unzip libncurses-dev gawk gettext libssl-dev xsltproc rsync bc
+
+      - name: Setup cache for OpenWrt
+        uses: actions/cache@v3
+        with:
+          path: |
+            openwrt/dl
+            openwrt/build_dir
+            openwrt/staging_dir
+          key: ${{ runner.os }}-openwrt-${{ hashFiles('openwrt/feeds.conf.default') }}
 
       - name: Clone OpenWrt source
         run: |
@@ -30,14 +39,19 @@ jobs:
 
       - name: Add rtl8192eu driver
         run: |
-          cd openwrt/package
+          cd openwrt/package/kernel
           git clone https://github.com/Mange/rtl8192eu-linux-driver.git rtl8192eu
 
-      - name: Build package
+      - name: Enable rtl8192eu in config
         run: |
           cd openwrt
           make defconfig
-          make package/rtl8192eu/compile V=s -j$(nproc)
+          sed -i 's/# CONFIG_PACKAGE_kmod-rtl8192eu is not set/CONFIG_PACKAGE_kmod-rtl8192eu=y/' .config
+
+      - name: Build rtl8192eu package
+        run: |
+          cd openwrt
+          make package/kmod-rtl8192eu/compile V=s -j$(nproc)
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
