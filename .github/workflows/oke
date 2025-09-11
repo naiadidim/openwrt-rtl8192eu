@@ -1,0 +1,61 @@
+name: Build kmod-rtl8192eu for OpenWrt 21.02.7
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git wget unzip libncurses-dev gawk gettext libssl-dev xsltproc rsync bc
+
+      - name: Setup cache for OpenWrt
+        uses: actions/cache@v3
+        with:
+          path: |
+            openwrt/dl
+            openwrt/build_dir
+            openwrt/staging_dir
+          key: ${{ runner.os }}-openwrt-${{ hashFiles('openwrt/feeds.conf.default') }}
+
+      - name: Clone OpenWrt source
+        run: |
+          git clone https://github.com/openwrt/openwrt.git
+          cd openwrt
+          git checkout v21.02.7
+
+      - name: Update feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Add rtl8192eu driver compatible with OpenWrt
+        run: |
+          cd openwrt/package/kernel
+          # clone driver OpenWrt-ready, sudah ada Makefile dan Kconfig
+          git clone https://github.com/danielperna84/rtl8192eu-openwrt.git rtl8192eu
+
+      - name: Enable rtl8192eu in config
+        run: |
+          cd openwrt
+          make defconfig
+          sed -i 's/# CONFIG_PACKAGE_kmod-rtl8192eu is not set/CONFIG_PACKAGE_kmod-rtl8192eu=y/' .config
+
+      - name: Build rtl8192eu package
+        run: |
+          cd openwrt
+          make package/kmod-rtl8192eu/compile V=s -j$(nproc)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kmod-rtl8192eu
+          path: openwrt/bin/packages/*/base/kmod-rtl8192eu*.ipk
