@@ -51,6 +51,7 @@ jobs:
       - name: Build rtl8192eu package
         run: |
           cd openwrt
+          # compile hanya package kmod-rtl8192eu
           make package/kmod-rtl8192eu/compile V=s -j$(nproc)
 
       - name: Upload artifacts
