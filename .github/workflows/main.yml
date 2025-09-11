@@ -37,10 +37,11 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Add rtl8192eu driver
+      - name: Add rtl8192eu driver compatible with OpenWrt
         run: |
           cd openwrt/package/kernel
-          git clone https://github.com/Mange/rtl8192eu-linux-driver.git rtl8192eu
+          # clone driver OpenWrt-ready, sudah ada Makefile dan Kconfig
+          git clone https://github.com/danielperna84/rtl8192eu-openwrt.git rtl8192eu
 
       - name: Enable rtl8192eu in config
         run: |
@@ -51,7 +52,6 @@ jobs:
       - name: Build rtl8192eu package
         run: |
           cd openwrt
-          # compile hanya package kmod-rtl8192eu
           make package/kmod-rtl8192eu/compile V=s -j$(nproc)
 
       - name: Upload artifacts
