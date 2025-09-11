@@ -1,0 +1,46 @@
+name: Build kmod-rtl8192eu for OpenWrt 21.02.7
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # menggunakan Ubuntu terbaru LTS
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git wget unzip libncurses-dev gawk gettext libssl-dev xsltproc rsync bc
+
+      - name: Clone OpenWrt source
+        run: |
+          git clone https://github.com/openwrt/openwrt.git
+          cd openwrt
+          git checkout v21.02.7
+
+      - name: Update feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Add rtl8192eu driver
+        run: |
+          cd openwrt/package
+          git clone https://github.com/Mange/rtl8192eu-linux-driver.git rtl8192eu
+
+      - name: Build package
+        run: |
+          cd openwrt
+          make defconfig
+          make package/rtl8192eu/compile V=s -j$(nproc)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kmod-rtl8192eu
+          path: openwrt/bin/packages/*/base/kmod-rtl8192eu*.ipk
